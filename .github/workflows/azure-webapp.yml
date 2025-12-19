@@ -15,23 +15,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2) .NET 8 SDK をセットアップ（Web App が .NET 8 LTS）
+      # 2) .NET 8 SDK
       - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '8.0.x'
 
-      # 3) どこで実行しているか＆ファイルが見えるか確認（一時的な見える化）
-      - name: Show repo root and project files
+      # 3) 見える化（一時的な確認用）
+      - name: Show repo and src
         run: |
           pwd
           ls -la
           ls -la AzureNamingTool || true
           ls -la AzureNamingTool/src || true
 
-      # 4) 依存復元（.csproj を実パスで明示）
+      # 4) 依存復元（実パスを明示）
       - name: Restore dependencies
-        run: dotnet restore ./AzureNamingTool/src/AzureNamingTool.csproj
+               run: dotnet restore ./AzureNamingTool/src/AzureNamingTool.csproj
 
       # 5) ビルド（Release）
       - name: Build
@@ -41,15 +41,13 @@ jobs:
       - name: Publish
         run: dotnet publish ./AzureNamingTool/src/AzureNamingTool.csproj --configuration Release --output ./publish
 
-      # （任意）成果物の中身を確認
+      # 7) 成果物確認（任意）
       - name: List publish folder
-        run: |
-          echo "== publish =="
-          ls -la ./publish || true
+        run: ls -la ./publish || true
 
-      # 7) Azure Web App にデプロイ
+      # 8) Azure Web App にデプロイ
       - name: Deploy to Azure WebApp
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'azurenamingtool-aeechtbccebhbbch'   # ← Azureポータルの実リソース名に完全一致
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}  # ← Secretに“生XML全文          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}  # ← Secretに“生XML全文”
+          app-name: 'azurenamingtool-aeechtbccebhbbch'          # ← Azureポータルの“既定ドメイン”サブドメインと完全一致
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}  # ← Secretに“生XML全文”

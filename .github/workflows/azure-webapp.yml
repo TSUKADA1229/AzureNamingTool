@@ -11,25 +11,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1) ソース取得
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # 2) .NET SDK 設定（Web App が .NET 8 の場合）
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '8.0.x'
 
+      # 3) 依存復元（AzureNamingTool.csproj を直接）
       - name: Restore dependencies
         run: dotnet restore ./src/AzureNamingTool.csproj
 
+      # 4) ビルド（Release）
       - name: Build
         run: dotnet build ./src/AzureNamingTool.csproj --configuration Release --no-restore
 
+      # 5) 公開（publish）成果物を ./publish に出力
       - name: Publish
         run: dotnet publish ./src/AzureNamingTool.csproj --configuration Release --output ./publish
 
-           - name: Deploy to Azure WebApp
+      # 6) Azure Web App にデプロイ
+      - name: Deploy to Azure WebApp
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'AzureNamingTool'
+          app-name: 'AzureNamingTool'                 # ← AzureポータルのWeb App名と完全一致にしてください
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+         

@@ -11,41 +11,40 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) ソース取得
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2) .NET 8 SDK
       - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '8.0.x'
 
-      # 3) 見える化（一時的な確認用）
-      - name: Show repo and src
+      # 探索してパスを特定
+      - name: Locate AzureNamingTool.csproj
+        id: locate
+        shell: bash
         run: |
-          pwd
-          ls -la
-          ls -la AzureNamingTool || true
-          ls -la AzureNamingTool/src || true
+          echo "== find AzureNamingTool.csproj =="
+          FOUND="$(find . -type f -name 'AzureNamingTool.csproj' | head -n 1)"
+          if [ -z "$FOUND" ]; then
+            echo "ERROR: AzureNamingTool.csproj not found." >&2
+            exit 1
+          fi
+          echo "Found: $FOUND"
+          echo "CSPROJ=$FOUND" >> "$GITHUB_OUTPUT"
 
-      # 4) 依存復元（実パスを明示）
       - name: Restore dependencies
-               run: dotnet restore ./AzureNamingTool/src/AzureNamingTool.csproj
+        run: dotnet restore "${{ steps.locate.outputs.CSPROJ }}"
 
-      # 5) ビルド（Release）
-      - name: Build
-        run: dotnet build ./AzureNamingTool/src/AzureNamingTool.csproj --configuration Release --no-restore
+      - name: Build (Release)
+        run: dotnet build "${{ steps.locate.outputs.CSPROJ }}" --configuration Release --no-restore
 
-      # 6) 公開（publish）成果物を ./publish に出力
       - name: Publish
-        run: dotnet publish ./AzureNamingTool/src/AzureNamingTool.csproj --configuration Release --output ./publish
+        run: dotnet publish "${{ steps.locate.outputs.CSPROJ }}" --configuration Release --output ./publish
 
-      # 7) 成果物確認（任意）
       - name: List publish folder
-        run: ls -la ./publish || true
+               run: ls -la ./publish || true
 
-      # 8) Azure Web App にデプロイ
       - name: Deploy to Azure WebApp
         uses: azure/webapps-deploy@v2
         with:

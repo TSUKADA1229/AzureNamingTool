@@ -3,45 +3,45 @@ name: Build and deploy ASP.NET Core app to Azure Web App
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) ソース取得
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2) .NET SDK 設定（Web App が .NET 8 の場合）
-      - name: Setup .NET
+      - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '8.0.x'
 
-      # 3) 依存復元（AzureNamingTool.csproj を直接）
+      - name: Show repo and src
+        run: |
+          pwd
+          ls -la
+          ls -la ./src || true
+          ls -la ./src/AzureNamingTool || true
+
       - name: Restore dependencies
         run: dotnet restore ./src/AzureNamingTool.csproj
 
-      # 4) ビルド（Release）
-      - name: Build
+      - name: Build (Release)
         run: dotnet build ./src/AzureNamingTool.csproj --configuration Release --no-restore
 
-      # 5) 公開（publish）成果物を ./publish に出力
       - name: Publish
         run: dotnet publish ./src/AzureNamingTool.csproj --configuration Release --output ./publish
 
-      # （任意）成果物確認
       - name: List publish folder
-        run: |
+               run: |
           echo "== publish =="
           ls -la ./publish || true
 
-      # 6) Azure Web App にデプロイ
       - name: Deploy to Azure WebApp
         uses: azure/webapps-deploy@v2
         with:
-                   app-name: 'azurenamingtool-aeechtbccebhbbch'   # ← 実リソース名に完全一致
+          app-name: 'azurenamingtool-aeechtbccebhbbch'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}

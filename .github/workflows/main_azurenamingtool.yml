@@ -1,6 +1,5 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
 
+# .github/workflows/main_azurenamingtool.yml
 name: Build and deploy ASP.Net Core app to Azure Web App - AzureNamingTool
 
 on:
@@ -13,42 +12,47 @@ jobs:
   build:
     runs-on: windows-latest
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up .NET Core
+      - name: Set up .NET SDK (8.x)
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.x'
 
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
+      # ▼ プロジェクトパスを「明示」してください（src/AzureNamingTool.csproj）
+      - name: Restore
+        run: dotnet restore .\src\AzureNamingTool.csproj
 
-      - name: dotnet publish
-        run: dotnet publish -c Release -o "${{env.DOTNET_ROOT}}/myapp"
+      - name: Build (Release)
+        run: dotnet build .\src\AzureNamingTool.csproj --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish .\src\AzureNamingTool.csproj -c Release -o "${{ env.DOTNET_ROOT }}\myapp"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
-          name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
+          name: dotnet-app
+          path: ${{ env.DOTNET_ROOT }}\myapp
 
   deploy:
     runs-on: windows-latest
     needs: build
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+      id-token: write      # OIDC 用
+      contents: read
 
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: .net-app
-      
-      - name: Login to Azure
+          name: dotnet-app
+          path: dotnet-app
+
+      - name: Login to Azure (OIDC)
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_EF1AE858C9A347A1AD5D88E88595F669 }}
@@ -59,7 +63,7 @@ jobs:
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'AzureNamingTool'
-          slot-name: 'Production'
-          package: .
-          
+          # ▼ Azureポータルの「既定のドメイン」URLのサブドメインに完全一致させる
+          app-name: 'azurenamingtool'
+          # ▼ スロット未使用なら slot-name は指定しない
+          # slot-name: 'Production'   # ← 使っていないなら削除

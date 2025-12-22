@@ -1,52 +1,27 @@
 
-name: Build and deploy ASP.NET Core app to Azure Web App
+# 例：ジョブの冒頭で OIDC 権限を付与
+permissions:
+  contents: read
+  packages: write
+  id-token: write
 
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+steps:
+  - uses: actions/checkout@v3
 
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
+  - name: Install Cosign
+    uses: sigstore/cosign-installer@v4
+    with:
+      cosign-release: 'v3.0.2'
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+  - name: Login to GHCR
+    uses: docker/login-action@v3
+    with:
+      registry: ghcr.io
+      username: ${{ github.actor }}
+      password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup .NET 8 SDK
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: '8.0.x'
-
-      # 探索してパスを特定
-      - name: Locate AzureNamingTool.csproj
-        id: locate
-        shell: bash
-        run: |
-          echo "== find AzureNamingTool.csproj =="
-          FOUND="$(find . -type f -name 'AzureNamingTool.csproj' | head -n 1)"
-          if [ -z "$FOUND" ]; then
-            echo "ERROR: AzureNamingTool.csproj not found." >&2
-            exit 1
-          fi
-          echo "Found: $FOUND"
-          echo "CSPROJ=$FOUND" >> "$GITHUB_OUTPUT"
-
-      - name: Restore dependencies
-        run: dotnet restore "${{ steps.locate.outputs.CSPROJ }}"
-
-      - name: Build (Release)
-        run: dotnet build "${{ steps.locate.outputs.CSPROJ }}" --configuration Release --no-restore
-
-      - name: Publish
-        run: dotnet publish "${{ steps.locate.outputs.CSPROJ }}" --configuration Release --output ./publish
-
-      - name: List publish folder
-               run: ls -la ./publish || true
-
-      - name: Deploy to Azure WebApp
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: 'azurenamingtool-aeechtbccebhbbch'          # ← Azureポータルの“既定ドメイン”サブドメインと完全一致
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}  # ← Secretに“生XML全文”
+  - name: Sign image digest (non-interactive)
+    env:
+      COSIGN_YES: "true"  # ← 対話プロンプトを自動承認（--yesでも可）
+       run: |
+      DIGEST="sha256:83be7ac7698c5bb7e068e1b4dd895813f53f1de2100fb1a164007d0e86ced38b"

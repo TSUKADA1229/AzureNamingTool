@@ -1,4 +1,19 @@
 
+- name: Locate AzureNamingTool.csproj
+  id: locate
+  shell: bash
+  run: |
+    echo "== find AzureNamingTool.csproj =="
+    FOUND="$(find . -type f -name 'AzureNamingTool.csproj' | head -n 1)"
+    if [ -z "$FOUND" ]; then
+      echo "ERROR: AzureNamingTool.csproj not found." >&2
+      exit 1
+    fi
+    echo "Found: $FOUND"
+    echo "CSPROJ=$FOUND" >> "$GITHUB_OUTPUT"
+
+
+
 # 例：ジョブの冒頭で OIDC 権限を付与
 permissions:
   contents: read

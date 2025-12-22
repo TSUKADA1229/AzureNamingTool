@@ -1,69 +1,57 @@
 
-# .github/workflows/main_azurenamingtool.yml
-name: Build and deploy ASP.Net Core app to Azure Web App - AzureNamingTool
+name: Build and deploy ASP.NET Core app to Azure Web App - AzureNamingTool (Publish Profile)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: windows-latest
-    permissions:
-      contents: read
+  build-and-deploy:
+    runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      # 1) ソース取得
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Set up .NET SDK (8.x)
-        uses: actions/setup-dotnet@v4
+      # 2) .NET 8 SDK
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '8.x'
+          dotnet-version: '8.0.x'
 
-      # ▼ プロジェクトパスを「明示」してください（src/AzureNamingTool.csproj）
+      # 3) .csproj を検出（ログに "Found: ..." ）
+      - name: Locate AzureNamingTool.csproj
+        id: locate
+        shell: bash
+        run: |
+          FOUND="$(find . -type f -name 'AzureNamingTool.csproj' | head -n 1)"
+          if [ -z "$FOUND" ]; then
+            echo "ERROR: AzureNamingTool.csproj not found." >&2
+            exit 1
+          fi
+          echo "Found: $FOUND"
+          echo "CSPROJ=$FOUND" >> "$GITHUB_OUTPUT"
+
+      # 4) 依存復元・ビルド・公開
       - name: Restore
-        run: dotnet restore .\src\AzureNamingTool.csproj
+        run: dotnet restore "${{ steps.locate.outputs.CSPROJ }}"
 
       - name: Build (Release)
-        run: dotnet build .\src\AzureNamingTool.csproj --configuration Release --no-restore
+        run: dotnet build "${{ steps.locate.outputs.CSPROJ }}" --configuration Release --no-restore
 
       - name: Publish
-        run: dotnet publish .\src\AzureNamingTool.csproj -c Release -o "${{ env.DOTNET_ROOT }}\myapp"
+        run: dotnet publish "${{ steps.locate.outputs.CSPROJ }}" --configuration Release --output ./publish
 
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
+      # （任意）成果物確認
+      - name: List publish folder
+        run: ls -la ./publish || true
+
+      # 5) デプロイ（Publish Profile 方式）
+      - name: Deploy to Azure WebApp
+        uses: azure/webapps-deploy@v2  # v3でも可
         with:
-          name: dotnet-app
-          path: ${{ env.DOTNET_ROOT }}\myapp
-
-  deploy:
-    runs-on: windows-latest
-    needs: build
-    permissions:
-      id-token: write      # OIDC 用
-      contents: read
-
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: dotnet-app
-          path: dotnet-app
-
-      - name: Login to Azure (OIDC)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_EF1AE858C9A347A1AD5D88E88595F669 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_1C9E836636E947F59168D7703CD6AA16 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_7994D6E1335449268515750FF3546202 }}
-
-      - name: Deploy to Azure Web App
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v3
-        with:
-          # ▼ Azureポータルの「既定のドメイン」URLのサブドメインに完全一致させる
-          app-name: 'azurenamingtool'
-          # ▼ スロット未使用なら slot-name は指定しない
-          # slot-name: 'Production'   # ← 使っていないなら削除
+          app-name: 'azurenamingtool-aeechtbccebhbbch'          # ← 既定ドメインのサブドメインと完全一致
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./publish

@@ -53,5 +53,5 @@ jobs:
       - name: Deploy to Azure WebApp
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'azurenamingtool-aeechtbccebhbbch'          # ← 実リソース名（既定ドメインのサブドメイン）に完全一致
+          app-name: 'azurenamingtool'          # ← 実リソース名（既定ドメインのサブドメイン）に完全一致
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}  # ← 生XML全文を Secret に保存
